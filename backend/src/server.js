@@ -1,28 +1,34 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
+const express = require("express");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const connectDB = require("./config/db");
 
-// Load environment variables
 dotenv.config();
 
 const app = express();
 
-// Middleware
+
+connectDB();
+
+
 app.use(cors());
 app.use(express.json());
 
-// Health check route
+app.get("/", (req, res) => {
+  res.send("API is running...");
+});
+
+
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "OK",
-    message: "Backend is running successfully 🚀"
+    message: "Backend is running successfully"
   });
 });
 
-// Port
+
 const PORT = process.env.PORT || 5000;
 
-// Start server
 app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
