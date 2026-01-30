@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getUser, logout } from "../lib/auth";
-import { useTheme } from "./ThemeProvider";
 
 export default function Navbar() {
-  const { theme, toggleTheme } = useTheme();
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -23,19 +21,19 @@ export default function Navbar() {
       <div className="flex gap-4">
         <Link href="/deals">Deals</Link>
         {user && <Link href="/dashboard">Dashboard</Link>}
-        {user?.role === "admin" && <Link href="/admin/deals/new">Add Deal</Link>}
-
-        <button onClick={toggleTheme}>
-          {theme === "dark" ? "☀️" : "🌙"}
-        </button>
-
-        {!user ? (
+        {user?.role === "admin" && (
+          <>
+            <Link href="/admin/deals/new">Add Deal</Link>
+            <Link href="/admin/claims">Approve Claims</Link>
+          </>
+        )}
+        {user ? (
+          <button onClick={logout}>Logout</button>
+        ) : (
           <>
             <Link href="/auth/login">Login</Link>
             <Link href="/auth/register">Sign Up</Link>
           </>
-        ) : (
-          <button onClick={logout}>Logout</button>
         )}
       </div>
     </nav>

@@ -2,23 +2,40 @@ const express = require("express");
 const Deal = require("../models/deal");
 const auth = require("../middleware/authMiddleware");
 const admin = require("../middleware/admin");
+const jwt = require("jsonwebtoken");
 
 const router = express.Router();
 
-/* GET ALL DEALS */
+/* ================================
+   GET DEALS
+   - Admin → all deals
+   - User  → active deals only
+================================ */
 router.get("/", async (req, res) => {
   try {
-    const deals = await Deal.find({
-      $or: [{ isActive: true }, { isActive: { $exists: false } }],
-    }).sort({ createdAt: -1 });
+    let isAdmin = false;
 
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      isAdmin = decoded.role === "admin";
+    }
+
+    const query = isAdmin
+      ? {}
+      : { $or: [{ isActive: true }, { isActive: { $exists: false } }] };
+
+    const deals = await Deal.find(query).sort({ createdAt: -1 });
     res.json(deals);
-  } catch {
+  } catch (error) {
     res.status(500).json({ message: "Server error" });
   }
 });
 
-/* GET SINGLE DEAL */
+/* ================================
+   GET SINGLE DEAL
+================================ */
 router.get("/:id", auth, async (req, res) => {
   const deal = await Deal.findById(req.params.id);
 
@@ -33,7 +50,9 @@ router.get("/:id", auth, async (req, res) => {
   res.json(deal);
 });
 
-/* CREATE DEAL (ADMIN ONLY) */
+/* ================================
+   CREATE DEAL (ADMIN ONLY)
+================================ */
 router.post("/", auth, admin, async (req, res) => {
   const { title, description, partnerName, accessLevel, category } = req.body;
 
@@ -45,8 +64,8 @@ router.post("/", auth, admin, async (req, res) => {
     title,
     description,
     partnerName,
-    accessLevel,
     category,
+    accessLevel,
     isActive: true,
   });
 

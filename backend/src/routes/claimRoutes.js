@@ -1,64 +1,73 @@
 const express = require("express");
 const Claim = require("../models/claim");
 const Deal = require("../models/deal");
-const authMiddleware = require("../middleware/authMiddleware");
+const auth = require("../middleware/authMiddleware");
+const admin = require("../middleware/admin");
 
 const router = express.Router();
 
-/**
- * CLAIM a deal
- */
-router.post("/:dealId", authMiddleware, async (req, res) => {
-  try {
-    const user = req.user; // ✅ FIX
-    const deal = await Deal.findById(req.params.dealId);
+/* ================================
+   USER: CLAIM DEAL
+================================ */
+router.post("/:dealId", auth, async (req, res) => {
+  const deal = await Deal.findById(req.params.dealId);
 
-    if (!deal || !deal.isActive) {
-      return res.status(404).json({ message: "Deal not found" });
-    }
-
-    // Block unverified users from locked deals
-    if (deal.accessLevel === "locked" && !user.isVerified) {
-      return res.status(403).json({
-        message: "Verification required to claim this deal",
-      });
-    }
-
-    const claim = await Claim.create({
-      userId: user._id,   // ✅ FIX
-      dealId: deal._id,
-    });
-
-    res.status(201).json({
-      message: "Deal claimed successfully",
-      claim,
-    });
-  } catch (error) {
-    if (error.code === 11000) {
-      return res.status(409).json({
-        message: "Deal already claimed",
-      });
-    }
-
-    console.error("Claim error:", error.message);
-    res.status(500).json({ message: "Server error" });
+  if (!deal || !deal.isActive) {
+    return res.status(404).json({ message: "Deal not found" });
   }
+
+  if (deal.accessLevel === "locked" && !req.user.isVerified) {
+    return res.status(403).json({ message: "Verification required" });
+  }
+
+  const claim = await Claim.create({
+    userId: req.user._id,
+    dealId: deal._id,
+  });
+
+  res.status(201).json(claim);
 });
 
-/**
- * GET claimed deals for logged-in user
- */
-router.get("/me", authMiddleware, async (req, res) => {
-  try {
-    const claims = await Claim.find({ userId: req.user._id }) // ✅ FIX
-      .populate("dealId")
-      .sort({ createdAt: -1 });
+/* ================================
+   USER: MY CLAIMS
+================================ */
+router.get("/me", auth, async (req, res) => {
+  const claims = await Claim.find({ userId: req.user._id })
+    .populate("dealId")
+    .sort({ createdAt: -1 });
 
-    res.json(claims);
-  } catch (error) {
-    console.error("Fetch claims error:", error.message);
-    res.status(500).json({ message: "Server error" });
+  res.json(claims);
+});
+
+/* ================================
+   ADMIN: ALL CLAIMS
+================================ */
+router.get("/", auth, admin, async (req, res) => {
+  const claims = await Claim.find()
+    .populate("userId", "email")
+    .populate("dealId", "title")
+    .sort({ createdAt: -1 });
+
+  res.json(claims);
+});
+
+/* ================================
+   ADMIN: APPROVE / REJECT CLAIM
+================================ */
+router.patch("/:id", auth, admin, async (req, res) => {
+  const { status } = req.body;
+
+  if (!["approved", "rejected"].includes(status)) {
+    return res.status(400).json({ message: "Invalid status" });
   }
+
+  const claim = await Claim.findByIdAndUpdate(
+    req.params.id,
+    { status },
+    { new: true }
+  );
+
+  res.json(claim);
 });
 
 module.exports = router;
