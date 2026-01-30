@@ -5,30 +5,29 @@ const userSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      trim: true
     },
+
     email: {
       type: String,
       required: true,
       unique: true,
-      lowercase: true
     },
+
     password: {
       type: String,
-      required: true
+      required: true,
     },
-    isVerified: {
-      type: Boolean,
-      default: false
-    },
-    companyName: {
-      type: String
-    },
+
     role: {
       type: String,
-      enum: ["founder", "team", "indie"],
-      default: "founder"
-    }
+      enum: ["user", "admin"],
+      default: "user",
+    },
+
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

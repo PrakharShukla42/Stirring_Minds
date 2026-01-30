@@ -1,7 +1,6 @@
 const express = require("express");
 const Claim = require("../models/claim");
 const Deal = require("../models/deal");
-const User = require("../models/user");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const router = express.Router();
@@ -11,7 +10,7 @@ const router = express.Router();
  */
 router.post("/:dealId", authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.userId);
+    const user = req.user; // ✅ FIX
     const deal = await Deal.findById(req.params.dealId);
 
     if (!deal || !deal.isActive) {
@@ -21,23 +20,23 @@ router.post("/:dealId", authMiddleware, async (req, res) => {
     // Block unverified users from locked deals
     if (deal.accessLevel === "locked" && !user.isVerified) {
       return res.status(403).json({
-        message: "Verification required to claim this deal"
+        message: "Verification required to claim this deal",
       });
     }
 
     const claim = await Claim.create({
-      userId: req.userId,
-      dealId: deal._id
+      userId: user._id,   // ✅ FIX
+      dealId: deal._id,
     });
 
     res.status(201).json({
       message: "Deal claimed successfully",
-      claim
+      claim,
     });
   } catch (error) {
     if (error.code === 11000) {
       return res.status(409).json({
-        message: "Deal already claimed"
+        message: "Deal already claimed",
       });
     }
 
@@ -51,7 +50,7 @@ router.post("/:dealId", authMiddleware, async (req, res) => {
  */
 router.get("/me", authMiddleware, async (req, res) => {
   try {
-    const claims = await Claim.find({ userId: req.userId })
+    const claims = await Claim.find({ userId: req.user._id }) // ✅ FIX
       .populate("dealId")
       .sort({ createdAt: -1 });
 
